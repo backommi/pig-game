@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>小猪养成记</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .game-container {
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 15px;
+        }
+        
+        /* 状态栏 */
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 15px 20px;
+            margin-bottom: 10px;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .status-icon {
+            font-size: 20px;
+        }
+        
+        .status-text {
+            font-size: 16px;
+            color: #fff;
+            font-weight: 500;
+        }
+        
+        .coins .status-text {
+            color: #FFD700;
+        }
+        
+        .combo .status-text {
+            color: #FF6B6B;
+            animation: pulse 0.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        /* 成本条 */
+        .cost-bar {
+            background: rgba(231, 76, 60, 0.2);
+            border: 2px solid rgba(231, 76, 60, 0.4);
+            border-radius: 12px;
+            padding: 12px 20px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .cost-text {
+            font-size: 18px;
+            font-weight: bold;
+            color: #e74c3c;
+        }
+        
+        .cost-detail {
+            font-size: 14px;
+            color: rgba(255,255,255,0.7);
+        }
+        
+        /* 特殊状态 */
+        .special-status {
+            margin-bottom: 15px;
+        }
+        
+        .status-tag {
+            display: block;
+            text-align: center;
+            padding: 12px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        .status-tag.lucky {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: #fff;
+        }
+        
+        .status-tag.escape {
+            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+            color: #fff;
+            animation: warningPulse 0.5s infinite;
+        }
+        
+        @keyframes warningPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        /* 小猪区域 */
+        .pig-section {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 25px;
+            padding: 25px;
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        .pig-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 0;
+            position: relative;
+        }
+        
+        .pig-stage-badge {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: #fff;
+            padding: 6px 15px;
+            border-radius: 15px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        .pig-avatar-wrapper {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .pig-avatar {
+            font-size: 100px;
+            animation: breathe 2s infinite;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        
+        .pig-avatar:active {
+            transform: scale(0.95);
+        }
+        
+        .pig-avatar.feeding {
+            animation: shake 0.3s infinite;
+        }
+        
+        .pig-avatar.happy {
+            animation: happyJump 0.6s;
+        }
+        
+        .pig-avatar.sad {
+            animation: shake 0.5s;
+            filter: grayscale(0.5);
+        }
+        
+        .pig-avatar.angry {
+            animation: angryShake 0.3s 2;
+        }
+        
+        .pig-avatar.escape {
+            animation: escapeShake 0.3s infinite;
+        }
+        
+        @keyframes breathe {
+            0%, 100% { transform: scale(1) translateY(0); }
+            50% { transform: scale(1.02) translateY(-5px); }
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-5deg); }
+            75% { transform: rotate(5deg); }
+        }
+        
+        @keyframes happyJump {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-30px) scale(1.1); }
+        }
+        
+        @keyframes angryShake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        
+        @keyframes escapeShake {
+            0%, 100% { transform: translateX(0) rotate(0deg); }
+            25% { transform: translateX(-15px) rotate(-10deg); }
+            75% { transform: translateX(15px) rotate(10deg); }
+        }
+        
+        .pig-size-indicator {
+            margin-top: 10px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #FFD700;
+            background: rgba(0,0,0,0.3);
+            padding: 5px 20px;
+            border-radius: 20px;
+        }
+        
+        .pig-shadow {
+            height: 20px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 50%;
+            margin-top: 10px;
+            animation: shadowPulse 2s infinite;
+        }
+        
+        @keyframes shadowPulse {
+            0%, 100% { transform: scale(1); opacity: 0.2; }
+            50% { transform: scale(0.9); opacity: 0.15; }
+        }
+        
+        /* 喂食进度条 */
+        .feed-timing-bar {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+        }
+        
+        .timing-track {
+            height: 50px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 25px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .timing-zones {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            z-index: 1;
+        }
+        
+        .zone {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: rgba(255,255,255,0.6);
+            font-weight: bold;
+        }
+        
+        .zone.early { flex: 6; }
+        .zone.good { flex: 2; background: rgba(255,193,7,0.3); }
+        .zone.perfect { flex: 2; background: rgba(76,175,80,0.4); color: #fff; }
+        
+        .timing-progress {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+            border-radius: 25px;
+            transition: width 0.05s linear;
+        }
+        
+        .timing-hint {
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: #FFD700;
+            margin-top: 10px;
+            animation: pulse 0.5s infinite;
+        }
+        
+        /* 状态条 */
+        .stats-row {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        
+        .stat-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .stat-icon {
+            font-size: 20px;
+            width: 30px;
+        }
+        
+        .bar-bg {
+            flex: 1;
+            height: 16px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .bar-fill {
+            height: 100%;
+            border-radius: 8px;
+            transition: width 0.3s;
+        }
+        
+        .bar-fill.health {
+            background: linear-gradient(90deg, #ff6b6b 0%, #ee5a24 100%);
+        }
+        
+        .bar-fill.happy {
+            background: linear-gradient(90deg, #feca57 0%, #ff9f43 100%);
+        }
+        
+        .stat-value {
+            font-size: 14px;
+            color: #fff;
+            font-weight: bold;
+            width: 50px;
+            text-align: right;
+        }
+        
+        /* 事件提示 */
+        .event-popup {
+            position: fixed;
+            top: 150px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px 30px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 100;
+        }
+        
+        .event-popup.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        
+        .event-emoji {
+            font-size: 40px;
+        }
+        
+        .event-text {
+            font-size: 18px;
+            color: #fff;
+            font-weight: 500;
+        }
+        
+        /* 成就提示 */
+        .achievement-popup {
+            position: fixed;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-150px);
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border-radius: 20px;
+            padding: 25px 35px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 200;
+            box-shadow: 0 10px 40px rgba(245, 87, 108, 0.4);
+        }
+        
+        .achievement-popup.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        
+        .achievement-icon {
+            font-size: 50px;
+        }
+        
+        .achievement-title {
+            font-size: 16px;
+            color: rgba(255,255,255,0.8);
+        }
+        
+        .achievement-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: #fff;
+        }
+        
+        .achievement-desc {
+            font-size: 14px;
+            color: rgba(255,255,255,0.9);
+        }
+        
+        /* 饲料选择 */
+        .feed-section {
+            margin-bottom: 20px;
+        }
+        
+        .section-title {
+            font-size: 18px;
+            color: rgba(255,255,255,0.9);
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+        
+        .feed-list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+        
+        .feed-card {
+            border-radius: 20px;
+            padding: 20px 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .feed-card:active {
+            transform: scale(0.95);
+        }
+        
+        .feed-card.disabled {
+            opacity: 0.4;
+            pointer-events: none;
+        }
+        
+        .feed-card.escape-warn {
+            animation: escapeWarn 0.5s infinite;
+        }
+        
+        @keyframes escapeWarn {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .feed-emoji {
+            font-size: 40px;
+        }
+        
+        .feed-name {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .feed-price {
+            font-size: 16px;
+            font-weight: bold;
+            color: #e74c3c;
+            background: rgba(255,255,255,0.6);
+            padding: 3px 10px;
+            border-radius: 10px;
+        }
+        
+        .feed-protein {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .feed-bonus {
+            font-size: 14px;
+            font-weight: bold;
+            color: #27ae60;
+            background: rgba(255,255,255,0.5);
+            padding: 3px 10px;
+            border-radius: 10px;
+        }
+        
+        /* 喂食提示 */
+        .feeding-hint {
+            text-align: center;
+            padding: 30px;
+        }
+        
+        .hint-text {
+            font-size: 28px;
+            font-weight: bold;
+            color: #FFD700;
+            display: block;
+            margin-bottom: 10px;
+        }
+        
+        .hint-sub {
+            font-size: 16px;
+            color: rgba(255,255,255,0.7);
+        }
+        
+        /* 操作按钮 */
+        .action-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .next-week-btn {
+            width: 80%;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 35px;
+            border: 3px solid rgba(255,255,255,0.3);
+            box-shadow: 0 10px 30px rgba(102,126,234,0.4);
+            color: #fff;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .next-week-btn:active {
+            transform: scale(0.98);
+        }
+        
+        .week-hint {
+            font-size: 14px;
+            color: rgba(255,255,255,0.6);
+        }
+        
+        /* 弹窗 */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-mask {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+        }
+        
+        .modal-content {
+            width: 90%;
+            max-width: 400px;
+            background: linear-gradient(180deg, #fff 0%, #f8f9fa 100%);
+            border-radius: 30px;
+            padding: 30px 25px;
+            z-index: 1001;
+            animation: modalIn 0.4s;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        @keyframes modalIn {
+            from {
+                opacity: 0;
+                transform: scale(0.8) translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+        
+        .modal-header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        
+        .modal-emoji {
+            font-size: 60px;
+            display: block;
+            margin-bottom: 10px;
+        }
+        
+        .modal-title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .rating-box {
+            text-align: center;
+            margin-bottom: 25px;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+        }
+        
+        .rating-stars {
+            font-size: 36px;
+            display: block;
+            margin-bottom: 8px;
+        }
+        
+        .rating-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #fff;
+        }
+        
+        /* 财务明细 */
+        .finance-summary {
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .finance-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        
+        .finance-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+        }
+        
+        .finance-label {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .finance-value {
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        .finance-value.positive { color: #27ae60; }
+        .finance-value.negative { color: #e74c3c; }
+        .finance-value.profit {
+            font-size: 24px;
+        }
+        
+        .finance-divider {
+            height: 1px;
+            background: #ddd;
+            margin: 10px 0;
+        }
+        
+        .finance-item.highlight {
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 10px;
+            padding: 15px 10px;
+            margin-top: 5px;
+        }
+        
+        .result-stats {
+            margin-bottom: 20px;
+        }
+        
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .result-item:last-child {
+            border-bottom: none;
+        }
+        
+        .result-label {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .result-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        /* 成就展示 */
+        .achievements-section {
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .achievements-title {
+            font-size: 14px;
+            color: #667eea;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .achievements-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+        }
+        
+        .achievement-mini {
+            font-size: 28px;
+            background: rgba(102, 126, 234, 0.15);
+            padding: 8px;
+            border-radius: 10px;
+        }
+        
+        .modal-actions {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .action-btn {
+            flex: 1;
+            padding: 15px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .action-btn:active {
+            transform: scale(0.98);
+        }
+        
+        .action-btn.primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+        }
+        
+        .action-btn.secondary {
+            background: #f0f0f0;
+            color: #666;
+        }
+        
+        /* 分享按钮 */
+        .share-section {
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .share-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 25px;
+            background: linear-gradient(135deg, #07c160 0%, #10b981 100%);
+            color: #fff;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            transition: transform 0.2s;
+        }
+        
+        .share-btn:active {
+            transform: scale(0.98);
+        }
+        
+        .share-url {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(0,0,0,0.1);
+            border-radius: 8px;
+            font-size: 12px;
+            color: #666;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <!-- 状态栏 -->
+        <div class="status-bar">
+            <div class="status-item">
+                <span class="status-icon">📅</span>
+                <span class="status-text" id="weekText">第1周</span>
+            </div>
+            <div class="status-item coins">
+                <span class="status-icon">💰</span>
+                <span class="status-text" id="coinsText">2000</span>
+            </div>
+            <div class="status-item combo" id="comboBox" style="display:none">
+                <span class="status-icon">🔥</span>
+                <span class="status-text" id="comboText">x1</span>
+            </div>
+        </div>
+
+        <!-- 成本统计 -->
+        <div class="cost-bar">
+            <span class="cost-text">成本: <span id="totalCost">500</span>元</span>
+            <span class="cost-detail">(饲料<span id="feedCost">0</span> + 其他<span id="otherCost">500</span>)</span>
+        </div>
+
+        <!-- 特殊状态 -->
+        <div class="special-status" id="luckyStatus" style="display:none">
+            <span class="status-tag lucky">🍀 幸运模式 - 下次双倍成长!</span>
+        </div>
+        <div class="special-status" id="escapeStatus" style="display:none">
+            <span class="status-tag escape">🏃 小猪要逃跑!用鱼粉挽留!</span>
+        </div>
+
+        <!-- 小猪展示区 -->
+        <div class="pig-section">
+            <div class="pig-container" id="pigContainer">
+                <span class="pig-stage-badge" id="stageBadge">乳猪</span>
+                <div class="pig-avatar-wrapper">
+                    <div class="pig-avatar" id="pigAvatar">🐷</div>
+                    <div class="pig-size-indicator" id="weightText">5.0kg</div>
+                </div>
+                <div class="pig-shadow" id="pigShadow" style="width:80px"></div>
+                
+                <!-- 喂食进度条 -->
+                <div class="feed-timing-bar" id="timingBar" style="display:none">
+                    <div class="timing-track">
+                        <div class="timing-zones">
+                            <div class="zone early">早</div>
+                            <div class="zone good">好</div>
+                            <div class="zone perfect">完美!</div>
+                        </div>
+                        <div class="timing-progress" id="timingProgress" style="width:0%"></div>
+                    </div>
+                    <div class="timing-hint">点击小猪喂食!</div>
+                </div>
+            </div>
+            
+            <!-- 状态条 -->
+            <div class="stats-row">
+                <div class="stat-bar">
+                    <span class="stat-icon">❤️</span>
+                    <div class="bar-bg">
+                        <div class="bar-fill health" id="healthBar" style="width:100%"></div>
+                    </div>
+                    <span class="stat-value" id="healthText">100%</span>
+                </div>
+                <div class="stat-bar">
+                    <span class="stat-icon">😊</span>
+                    <div class="bar-bg">
+                        <div class="bar-fill happy" id="happyBar" style="width:80%"></div>
+                    </div>
+                    <span class="stat-value" id="happyText">80%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 事件提示 -->
+        <div class="event-popup" id="eventPopup">
+            <span class="event-emoji" id="eventEmoji">💩</span>
+            <span class="event-text" id="eventText">事件内容</span>
+        </div>
+
+        <!-- 成就提示 -->
+        <div class="achievement-popup" id="achievementPopup">
+            <span class="achievement-icon">🏆</span>
+            <div>
+                <div class="achievement-title">解锁成就</div>
+                <div class="achievement-name" id="achievementName">成就名称</div>
+                <div class="achievement-desc" id="achievementDesc">成就描述</div>
+            </div>
+        </div>
+
+        <!-- 饲料选择 -->
+        <div class="feed-section" id="feedSection">
+            <div class="section-title" id="feedTitle">选择饲料 (每次1kg)</div>
+            <div class="feed-list" id="feedList">
+                <!-- 动态生成 -->
+            </div>
+        </div>
+
+        <!-- 喂食中提示 -->
+        <div class="feeding-hint" id="feedingHint" style="display:none">
+            <span class="hint-text">点击小猪完成喂食!</span>
+            <span class="hint-sub">在"完美"区域点击获得连击!</span>
+        </div>
+
+        <!-- 下一周按钮 -->
+        <div class="action-section" id="actionSection">
+            <button class="next-week-btn" id="nextWeekBtn">⏭️ 进入第2周</button>
+            <span class="week-hint">每周自动成长 + 维护费50元</span>
+        </div>
+
+        <!-- 游戏结束弹窗 -->
+        <div class="modal" id="gameOverModal" style="display:none">
+            <div class="modal-mask"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <span class="modal-emoji">🏆</span>
+                    <div class="modal-title">出栏结算</div>
+                </div>
+                
+                <div class="rating-box">
+                    <span class="rating-stars" id="ratingStars">⭐⭐⭐⭐⭐</span>
+                    <div class="rating-title" id="ratingTitle">猪王</div>
+                </div>
+                
+                <div class="finance-summary">
+                    <div class="finance-title">💰 财务明细</div>
+                    <div class="finance-item">
+                        <span class="finance-label">出售价格</span>
+                        <span class="finance-value positive">+<span id="finalPrice">0</span>元</span>
+                    </div>
+                    <div class="finance-item">
+                        <span class="finance-label">饲料成本</span>
+                        <span class="finance-value negative">-<span id="finalFeedCost">0</span>元</span>
+                    </div>
+                    <div class="finance-item">
+                        <span class="finance-label">其他成本</span>
+                        <span class="finance-value negative">-<span id="finalOtherCost">0</span>元</span>
+                    </div>
+                    <div class="finance-divider"></div>
+                    <div class="finance-item highlight">
+                        <span class="finance-label">净利润</span>
+                        <span class="finance-value profit" id="profitText">+0元</span>
+                    </div>
+                </div>
+                
+                <div class="result-stats">
+                    <div class="result-item">
+                        <span class="result-label">最终体重</span>
+                        <span class="result-value" id="finalWeight">0kg</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">最高连击</span>
+                        <span class="result-value" id="finalCombo">x0</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">完美喂食</span>
+                        <span class="result-value" id="finalPerfect">0次</span>
+                    </div>
+                </div>
+                
+                <div class="achievements-section" id="achievementsSection" style="display:none">
+                    <div class="achievements-title">本局成就</div>
+                    <div class="achievements-list" id="achievementsList"></div>
+                </div>
+                
+                <div class="modal-actions">
+                    <button class="action-btn primary" id="restartBtn">再养一只</button>
+                    <button class="action-btn secondary" id="shareBtn">分享游戏</button>
+                </div>
+                
+                <div class="share-section" id="shareSection" style="display:none">
+                    <div class="share-url" id="shareUrl"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
