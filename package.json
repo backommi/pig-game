@@ -1,0 +1,18 @@
+{
+  "name": "pig-game",
+  "version": "1.0.0",
+  "description": "小猪养成记 - 真实版养猪游戏",
+  "scripts": {
+    "build": "echo 'Static site - no build needed'"
+  },
+  "keywords": [
+    "game",
+    "pig",
+    "farming"
+  ],
+  "author": "帆秘书",
+  "license": "MIT",
+  "devDependencies": {
+    "form-data": "^4.0.5"
+  }
+}
